@@ -1,5 +1,5 @@
 bin
-package
 quandong
 vendor
 .idea
+quandong-*json

@@ -6,15 +6,29 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 )
 
 var Version = "none"
 
+// environMap - return the os.Environ as a map
+func environMap() map[string]string {
+	result := map[string]string{}
+	e := os.Environ()
+	for _, kev := range e {
+		kv := strings.Split(kev, "=")
+		result[kv[0]] = kv[1]
+	}
+	return result
+}
+
 // findProgramInPath - Look for the the real program we are usurping,
-// return the path to it as a string.
-func findProgramInPath(name string) (string, error) {
+// skip this program when it's found in the PATH,
+// return the path as a string.
+func findProgramInPath(name string, currentExecutable string) (string, error) {
 	PATH, ok := os.LookupEnv("PATH")
 	if !ok {
 		log.Fatal("ERROR: No PATH environment variable")
@@ -28,7 +42,16 @@ func findProgramInPath(name string) (string, error) {
 
 		for _, f := range files {
 			if f.Name() == name && !f.Mode().IsDir() && f.Mode().IsRegular() && (f.Mode()&0111) != 0 {
-				return fmt.Sprintf("%s/%s", dir, f.Name()), nil
+				target := filepath.Join(dir, f.Name())
+				target, err = filepath.EvalSymlinks(target)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				if target == currentExecutable {
+					continue
+				}
+				return target, nil
 			}
 		}
 	}
@@ -36,22 +59,32 @@ func findProgramInPath(name string) (string, error) {
 }
 func main() {
 
-	fmt.Printf("%#v\n", os.Args)
-	a0 := strings.Split(os.Args[0], "/")
-	name := a0[len(a0)-1]
-	target, err := findProgramInPath(name)
+	if runtime.GOOS != "linux" {
+		panic("Program runs on Linux only")
+	}
+	currentExecutable, err := filepath.EvalSymlinks("/proc/self/exe")
+
+	name := filepath.Base(os.Args[0])
+	target, err := findProgramInPath(name, currentExecutable)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	tempPrefix := fmt.Sprintf("quandong-%s-", name)
+	tempPrefix := fmt.Sprintf("quandong-%s-*.json", name)
 	logFile, err := ioutil.TempFile(".", tempPrefix)
 	if err != nil {
 		log.Fatalf("ERROR: Cannot create temporary file: %s. %s", tempPrefix, err)
 	}
 	defer func() { _ = logFile.Close() }()
 
-	var toLog = map[string]interface{}{"Args": os.Args, "Environ": os.Environ(), "Target": target, "quandong": map[string]string{"Version": Version}}
+	var toLog = map[string]interface{}{
+		"args":    os.Args,
+		"environ": environMap(),
+		"target":  target,
+		"quandong": map[string]string{
+			"version":    Version,
+			"executable": currentExecutable,
+		}}
 	js, err := json.MarshalIndent(toLog, "", "  ")
 	n, err := fmt.Fprintln(logFile, string(js))
 	if n == 0 || err != nil {
