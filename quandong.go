@@ -35,14 +35,16 @@ func findProgramInPath(name string, currentExecutable string) (string, error) {
 	}
 	pathList := strings.Split(PATH, ":")
 	for _, dir := range pathList {
-		files, err := ioutil.ReadDir(dir)
+		log.Printf("INFO: scanning path segment '%s'", dir)
+		files, err := ioutil.ReadDir(dir) // some PATH entries are bogus - so ignore error ones
 		if err != nil {
-			log.Fatal(err)
+			log.Printf("INFO: ReadDir error on '%s': %s", dir, err)
+			continue
 		}
 
 		for _, f := range files {
-			if f.Name() == name && !f.Mode().IsDir() && f.Mode().IsRegular() && (f.Mode()&0111) != 0 {
-				target := filepath.Join(dir, f.Name())
+			target := filepath.Join(dir, f.Name())
+			if f.Name() == name && !f.Mode().IsDir() {
 				target, err = filepath.EvalSymlinks(target)
 				if err != nil {
 					log.Fatal(err)
@@ -51,6 +53,7 @@ func findProgramInPath(name string, currentExecutable string) (string, error) {
 				if target == currentExecutable {
 					continue
 				}
+				log.Printf("INFO: found target '%s'", target)
 				return target, nil
 			}
 		}
