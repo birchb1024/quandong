@@ -31,14 +31,14 @@ func environMap() map[string]string {
 func findProgramInPath(name string, currentExecutable string) (string, error) {
 	PATH, ok := os.LookupEnv("PATH")
 	if !ok {
-		log.Fatal("ERROR: No PATH environment variable")
+		log.Fatal("ERROR: quandong No PATH environment variable")
 	}
 	pathList := strings.Split(PATH, ":")
 	for _, dir := range pathList {
-		log.Printf("INFO: scanning path segment '%s'", dir)
+		log.Printf("INFO: quandong scanning path segment '%s'", dir)
 		files, err := ioutil.ReadDir(dir) // some PATH entries are bogus - so ignore error ones
 		if err != nil {
-			log.Printf("INFO: ReadDir error on '%s': %s", dir, err)
+			log.Printf("INFO: quandong ReadDir error on '%s': %s", dir, err)
 			continue
 		}
 
@@ -53,17 +53,17 @@ func findProgramInPath(name string, currentExecutable string) (string, error) {
 				if target == currentExecutable {
 					continue
 				}
-				log.Printf("INFO: found target '%s'", target)
+				log.Printf("INFO: quandong found target '%s'", target)
 				return target, nil
 			}
 		}
 	}
-	return "", fmt.Errorf("ERROR: executable '%s' not found in PATH", name)
+	return "", fmt.Errorf("ERROR: quandong target executable '%s' not found in PATH", name)
 }
 func main() {
 
 	if runtime.GOOS != "linux" {
-		panic("Program runs on Linux only")
+		panic("quandong runs on Linux only")
 	}
 	currentExecutable, err := filepath.EvalSymlinks("/proc/self/exe")
 
@@ -76,7 +76,7 @@ func main() {
 	tempPrefix := fmt.Sprintf("quandong-%s-*.json", name)
 	logFile, err := ioutil.TempFile(".", tempPrefix)
 	if err != nil {
-		log.Fatalf("ERROR: Cannot create temporary file: %s. %s", tempPrefix, err)
+		log.Fatalf("ERROR: quandong cannot create temporary file: %s. %s", tempPrefix, err)
 	}
 	defer func() { _ = logFile.Close() }()
 
